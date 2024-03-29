@@ -1,0 +1,250 @@
+# model configuration
+model:
+  # model class, e.g. UNet3D, ResidualUNet3D
+  name: UNet3D
+  # number of input channels to the model
+  in_channels: 1
+  # number of output channels
+  out_channels: 1
+  # determines the order of operators in a single layer (default: gcr - GroupNorm+Conv3d+ReLU)
+  layer_order: cgr
+#  layer_order: crg
+  # number of features at each level of the U-Net
+  #f_maps: [16, 32, 64, 128, 256] model para++
+  f_maps: [32, 64, 128, 256, 512]
+  # number of groups in the groupnorm default:8
+#  num_groups: 16
+  num_groups: 2
+  # if True applies the final normalization layer (sigmoid or softmax), otherwise the networks returns the output from the final convolution layer; use False for regression problems, e.g. de-noising
+  is_segmentation: false
+# trainer configuration
+trainer:
+  # path to the checkpoint directory
+  checkpoint_dir: "D:/model_save1/1_brain_para_581_(log_Min-Max Normalization(everyone))_constrained_MAR(1940)"
+  # path to latest checkpoint; if provided the training will be resumed from that checkpoint
+  resume:
+  # path to the best_checkpoint.pytorch; to be used for fine-tuning the model with additional ground truth
+  # make sure to decrease the learning rate in the optimizer config accordingly
+  pre_trained: null
+  # how many iterations between validations
+  validate_after_iters: 2000
+  # how many iterations between tensorboard logging
+  #log_after_iters: 100
+  log_after_iters: 800
+  # max number of epochs
+  #max_num_epochs: 1000
+  max_num_epochs: 250
+  # max number of iterations
+  #max_num_iterations: 100000
+  max_num_iterations: 2700000
+  # model with higher eval score is considered better
+  #eval_score_higher_is_better: true
+  eval_score_higher_is_better: false
+# optimizer configuration
+optimizer:
+  # initial learning rate
+  learning_rate: 0.000008
+  # weight decay
+  weight_decay: 0.000001
+# loss function configuration
+loss:
+  # loss function to be used during training
+  #name: SmoothL1Loss
+  name: SmoothL1Loss
+  # a target value that is ignored and does not contribute to the input gradient
+  ignore_index: null
+# evaluation metric configuration
+eval_metric:
+  # peak signal to noise ration
+  name: SmoothL1Loss
+  # a target label that is ignored during metric evaluation
+  ignore_index: null
+# learning rate scheduler configuration
+lr_scheduler:
+  # reduce learning rate when evaluation metric plateaus
+  name: ReduceLROnPlateau
+  # use 'max' if eval_score_higher_is_better=True, 'min' otherwise
+  mode: min
+  # factor by which learning rate will be reduced
+  factor: 0.5
+  # number of *validation runs* with no improvement after which learning rate will be reduced
+  patience: 10
+  # reduce learning rate when evaluation metric plateaus
+#  name: CosineAnnealingLR
+#  # use 'max' if eval_score_higher_is_better=True, 'min' otherwise
+#  T_max: int(499)
+#  # factor by which learning rate will be reduced
+#  eta_min: 1e-6
+
+# data loaders configuration
+loaders:
+  # class of the HDF5 dataset, currently StandardHDF5Dataset and LazyHDF5Dataset are supported.
+  dataset: StandardHDF5Dataset
+#  dataset: LazyHDF5Dataset
+  # batch dimension; if number of GPUs is N > 1, then a batch_size of N * batch_size will automatically be taken for DataParallel
+  batch_size: 1
+  # how many subprocesses to use for data loading
+  num_workers: 0
+  # path to the raw data within the H5
+  raw_internal_path: /raw
+  # path to the the label data within the H5
+  #label_internal_path: random
+  label_internal_path: /label
+  # path to the raw data within the H5
+  CA1_internal_path: /CA1
+  # path to the raw data within the H5
+  CA2_internal_path: /CA2
+  # path to the raw data within the H5
+  CA3_internal_path: /CA3
+  # path to the raw data within the H5
+  DG_internal_path: /DG
+  # path to the raw data within the H5
+#  mask_internal_path: /mask
+#  # path to the raw data within the H5
+  MASK_internal_path: /MASK
+  # path to the pixel-wise weight map withing the H5 if present
+  weight_internal_path: null
+  #weight_internal_path: null
+  # configuration of the train loader
+  train:
+    # absolute paths to the training datasets; if a given path is a directory all H5 files ('*.h5', '*.hdf', '*.hdf5', '*.hd5')
+    # inside this this directory will be included as well (non-recursively)
+    file_paths:
+        #- "PATH_TO_TRAIN_SET"
+        #- D:/dataset/cluster/train_hip(normalization)(1627)
+        - D:\63113\coronal_581\581-(log2_Min-Max Normalization(everyone))\h5(log2_Min-Max Normalization(everyone))-MAR(1940)\train
+        #- D:\dataset\train2
+        # - E:/dataset/one slice/1h5-1/train
+
+    # SliceBuilder configuration, i.e. how to iterate over the input volume patch-by-patch
+    slice_builder:
+      # SliceBuilder class
+      name: SliceBuilder
+      # train patch size given to the network (adapt to fit in your GPU mem, generally the bigger patch the better)
+      #patch_shape: [128, 128, 128]
+      # patch_shape: [36, 36, 36]
+      # patch_shape: [67,58,41]
+      patch_shape: [41, 58, 20]
+      # train stride between patches
+      #stride_shape: [32, 32, 32]
+      stride_shape: [1, 1, 1]
+
+    # data transformations/augmentations
+    transformer:
+      raw:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+#        - name: RandomFlip
+#        - name: RandomRotate90
+#        - name: RandomRotate
+#          # rotate only in ZY only since most volumetric data is anisotropic
+#          axes: [[2, 1]]
+#          angle_spectrum: 30
+#          mode: reflect
+        - name: ToTensor
+          expand_dims: true
+      label:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+#        - name: RandomFlip
+#        - name: RandomRotate90
+#        - name: RandomRotate
+#          # rotate only in ZY only since most volumetric data is anisotropic
+#          axes: [[2, 1]]
+#          angle_spectrum: 30
+#          mode: reflect
+        - name: ToTensor
+          expand_dims: true
+      CA1:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+      CA2:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+      CA3:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+      DG:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+#      mask:
+#        # apply min-max scaling and map the input to [-1, 1]
+#        - name: Normalize
+#        - name: ToTensor
+#          expand_dims: true
+      MASK:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+
+
+  # configuration of the validation loaders
+  val:
+    # paths to the validation datasets; if a given path is a directory all H5 files ('*.h5', '*.hdf', '*.hdf5', '*.hd5')
+    # inside this this directory will be included as well (non-recursively)
+    file_paths:
+        #- "PATH_TO_VAL_SET"
+        #- D:/dataset/cluster/val_hip(normalization)(1627)
+        - D:\63113\coronal_581\581-(log2_Min-Max Normalization(everyone))\h5(log2_Min-Max Normalization(everyone))-MAR(1940)\val
+        #- D:\dataset\val2
+    # SliceBuilder configuration
+    slice_builder:
+      # SliceBuilder class
+      name: SliceBuilder
+      # validation patch (can be bigger than train patch since there is no backprop)
+      # patch_shape: [67,58,41]
+      patch_shape: [41, 58, 20]
+      # validation stride (validation patches doesn't need to overlap)
+      stride_shape: [1, 1, 1]
+
+    # no data augmentation during validation
+    transformer:
+      raw:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+      label:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+      CA1:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+      CA2:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+      CA3:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+      DG:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true
+#      mask:
+#        # apply min-max scaling and map the input to [-1, 1]
+#        - name: Normalize
+#        - name: ToTensor
+#          expand_dims: true
+      MASK:
+        # apply min-max scaling and map the input to [-1, 1]
+        - name: Normalize
+        - name: ToTensor
+          expand_dims: true

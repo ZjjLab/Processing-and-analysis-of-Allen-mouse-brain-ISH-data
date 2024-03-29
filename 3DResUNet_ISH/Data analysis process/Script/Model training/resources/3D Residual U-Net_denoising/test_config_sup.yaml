@@ -1,0 +1,117 @@
+# path to the checkpoint file containing the model
+#model_path: "PATH_TO_CHECKPOINT_DIR/best_checkpoint.pytorch"
+model_path: "D:/model_save1/1_brain_para_581_(log_Min-Max Normalization(everyone))_constrained_MAR(1940)/best_checkpoint.pytorch"
+# model configuration
+model:
+  # model class, e.g. UNet3D, ResidualUNet3D
+  name: UNet3D
+  # number of input channels to the model
+  in_channels: 1
+  # number of output channels
+  out_channels: 1
+  # determines the order of operators in a single layer (gcr - GroupNorm+Conv3d+ReLU)
+  layer_order: cgr
+  # number of features at each level of the U-Net
+  #f_maps: [16, 32, 64, 128, 256]
+  #f_maps: [8, 16, 32, 64, 128]
+  f_maps: [32, 64, 128, 256, 512]
+  # number of groups in the groupnorm
+  #num_groups: 16
+  num_groups: 2
+  # if True applies the final normalization layer (sigmoid or softmax), otherwise the networks returns the output from the final convolution layer; use False for regression problems, e.g. de-noising
+  is_segmentation: false
+predictor:
+  # standard in memory predictor
+  name: 'StandardPredictor'
+# specify the test datasets
+loaders:
+  # batch dimension; if number of GPUs is N > 1, then a batch_size of N * batch_size will automatically be taken for DataParallel
+  batch_size: 1
+  # mirror pad the raw data in each axis for sharper prediction near the boundaries of the volume
+  #mirror_padding: [16, 32, 32]
+  # path to the raw data within the H5
+  raw_internal_path: /raw
+  #label_internal_path: random
+  label_internal_path: /label
+  # path to the raw data within the H5
+  CA1_internal_path: /CA1
+  # path to the raw data within the H5
+  CA2_internal_path: /CA2
+  # path to the raw data within the H5
+  CA3_internal_path: /CA3
+  # path to the raw data within the H5
+  DG_internal_path: /DG
+  # path to the raw data within the H5
+  #  mask_internal_path: /mask
+  #  # path to the raw data within the H5
+  MASK_internal_path: /MASK
+  # how many subprocesses to use for data loading
+  num_workers: 0
+  test:
+    # paths to the test datasets; if a given path is a directory all H5 files ('*.h5', '*.hdf', '*.hdf5', '*.hd5')
+    # inside this this directory will be included as well (non-recursively)
+    file_paths:
+#      - E:/pytorch-3dunet-master/dataset/test
+       #- D:\dataset\test2
+       - D:\63113\coronal_1940\1940-(log2_Min-Max Normalization(everyone))\h5(log2_Min-Max Normalization(everyone))_(0)
+
+    # SliceBuilder configuration, i.e. how to iterate over the input volume patch-by-patch
+    slice_builder:
+      # SliceBuilder class
+      name: SliceBuilder
+      # train patch size given to the network (adapt to fit in your GPU mem, generally the bigger patch the better)
+      # patch_shape: [36, 36, 36]
+      # patch_shape: [67,58,41]
+      patch_shape: [41, 58, 20]
+      # train stride between patches
+      # stride_shape: [2, 2, 2]
+      stride_shape: [1, 1, 1]
+
+    transformer:
+        raw:
+          # apply min-max scaling and map the input to [-1, 1]
+          - name: Normalize
+          - name: ToTensor
+            expand_dims: true
+        label:
+          # apply min-max scaling and map the input to [-1, 1]
+          - name: Normalize
+          #        - name: RandomFlip
+          #        - name: RandomRotate90
+          #        - name: RandomRotate
+          #          # rotate only in ZY only since most volumetric data is anisotropic
+          #          axes: [[2, 1]]
+          #          angle_spectrum: 30
+          #          mode: reflect
+          - name: ToTensor
+            expand_dims: true
+        CA1:
+          # apply min-max scaling and map the input to [-1, 1]
+          - name: Normalize
+          - name: ToTensor
+            expand_dims: true
+        CA2:
+          # apply min-max scaling and map the input to [-1, 1]
+          - name: Normalize
+          - name: ToTensor
+            expand_dims: true
+        CA3:
+          # apply min-max scaling and map the input to [-1, 1]
+          - name: Normalize
+          - name: ToTensor
+            expand_dims: true
+        DG:
+          # apply min-max scaling and map the input to [-1, 1]
+          - name: Normalize
+          - name: ToTensor
+            expand_dims: true
+        #      mask:
+        #        # apply min-max scaling and map the input to [-1, 1]
+        #        - name: Normalize
+        #        - name: ToTensor
+        #          expand_dims: true
+        MASK:
+          # apply min-max scaling and map the input to [-1, 1]
+          - name: Normalize
+          - name: ToTensor
+            expand_dims: true
